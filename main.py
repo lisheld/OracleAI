@@ -1,9 +1,12 @@
 from openai import OpenAI
 import openai
 from dotenv import load_dotenv
-from helpers import get_endpoint,send_message
+from helpers import *
 import os
 import json
+from collections import defaultdict
+import json
+
 
 load_dotenv()
 odds_api_key = os.getenv('odds')
@@ -12,90 +15,139 @@ GPT_MODEL = "gpt-3.5-turbo"
 
 base_url = 'https://api.the-odds-api.com/v4'
 base_params={'apiKey':odds_api_key}
-conversation = [
-  {"role": "system", "content": "You are a helpful assistant. Only give the answer to the user's questions, no other text."}
-  ]
-### Get list of valid sports ###
-sports_json = get_endpoint(f'{base_url}/sports',params=base_params)
-league_dict = {item['title']:item['key'] for item in sports_json if not "winner" in item['key']}
 
-### Identify league ###
-possible_leagues = list(league_dict.keys())
-league = send_message(f"From these options: {possible_leagues}, what league is this question about?\n{prompt}\nRespond with ERROR if it is about none of the above.", conversation)
+prompt = input("Enter your question: ")
+    
 
-def chat_completion_request(messages, functions=None, model=GPT_MODEL):
-  try:
-    response = client.chat.completions.create(
-      model=model,
-      messages=messages,
-      functions=functions,
-    )
+
+def call_odds_function(convo, full_message):
+    """Function calling function which executes function calls when the model believes it is necessary.
+    Currently extended by adding clauses to this if statement."""
+    func = full_message.message.function_call
+    try:
+        parsed_output = json.loads(func.arguments)
+        print(parsed_output)
+        name = func.name
+        print(f"Function {name} requested.")
+        if name == "get_events":
+            if "league" not in parsed_output:
+                raise ValueError("No league provided. Ask the user to be more explicit.")
+            convo['league'] = parsed_output["league"]
+            events_json = get_endpoint(f"{base_url}/sports/{convo['league']}/events",base_params)
+            convo['event_dict'] = {f'{event["home_team"]},{event["away_team"]}': event['id'] for event in events_json}
+            odds_function = {
+                "name":"get_odds",
+                "description": "Use this function to get the specific live odds for the event the user wants advice on.",
+                "parameters": {
+                    "type":"object",
+                    "properties": {
+                        "teams": {
+                            "type":"string",
+                            "description":"The teams involved in the event",
+                            "enum": list(convo['event_dict'].keys())
+                        },
+                        "market": {
+                            "type":"string",
+                            "description":"The type of odds to get.",
+                            "enum":['h2h','spreads','totals','outrights']
+                        }
+                    },
+                    "required":["market"]
+                }
+            }
+            all_odds_function = {
+                "name":"get_all_odds",
+                "description": "Use this function to get all odds for the league the user is requesting info on.",
+                "parameters": {
+                    "type":"object",
+                    "properties": {
+                        "league": {
+                            "type":"string",
+                            "description":"The league the user is requesting info on",
+                            "enum": league_keys
+                        },
+                        "market": {
+                            "type":"string",
+                            "description":"The type of odds to get. If unsure, use 'h2h'.",
+                            "enum":['h2h','spreads','totals']
+                        }
+                    },
+                    "required":["market"]
+                }
+            }
+            convo.add_func(odds_function)
+            convo.add_func(all_odds_function)
+            out = "Events have been fetched."
+            
+        elif name == "get_odds":
+            if "teams" not in parsed_output:
+                raise ValueError("No teams provided. Ask the user to be more explicit.")
+            league_key = convo['league']
+            event_dict = convo['event_dict']
+            if league_key is None or event_dict is None:
+                raise ValueError("League and events must be defined by calling get_events before calling get_odds")
+            teams = parsed_output['teams']
+            
+            if teams not in event_dict:
+                raise ValueError("That match does not exist in the league requested. Please try again with a different league.")
+            id = event_dict[teams]
+            event = get_endpoint(f"{base_url}/sports/{league_key}/events/{id}/odds", base_params|{"regions":"us","markets":parsed_output['market']})
+            new_outcomes = average_market_odds(event)
+            out = json.dumps(new_outcomes)
+        elif name == "get_all_odds":
+            if "league" not in parsed_output:
+                raise ValueError("No league provided. Ask the user to be more explicit.")
+            events = []
+            market = parsed_output["market"]
+            league_key = parsed_output["league"]
+            odds = get_endpoint(f"{base_url}/sports/{league_key}/odds", base_params|{"regions":"us","markets":market})
+            for event in odds:
+                appended_event = {'home_team':event['home_team'],'away_team':event['away_team']}
+                new_outcomes = average_market_odds(event)
+                appended_event['outcomes'] = new_outcomes
+                events.append(appended_event)
+            out = json.dumps(events)        
+        else:
+            raise ValueError("Function does not exist and cannot be called")
+    except Exception as e:
+        print(f'Error: {e}')
+        out = e
+    print(out)
+    convo.add_message("function", str(out), name)
+    response = convo.complete()
     return response
-  except Exception as e:
-    print("Unable to generate ChatCompletion response")
-    print(f"Exception: {e}")
-    return e
-
-class Conversation:
-  def __init__(self, opening_prompt = "You are a helpful assistant."):
-    self.conversation_history = [{"role":"system", "content":opening_prompt}]
-    self.vars = {}
-
-  def add_message(self, role, content):
-    message = {"role": role, "content": content}
-    self.conversation_history.append(message)
-  
-  def set(self, var,val):
-    self.vars[var]=val
 
 
-def get_odds(sport: str, markets: list, teams: list):
-  events = get_endpoint(f"{base_url}/sports/{sport}/events",base_params|{"markets": markets,"regions":"us"})
-  eventid = None
-  for event in events:
-    if {event["home_team"], event["away_team"]} == set(teams):
-      eventid = event['id']
-      break
-  if eventid is None:
-    raise ValueError("No events found.")
-  odds = get_endpoint(f"{base_url}/sports/{sport}/events/{eventid}/odds",base_params|{})
-  
+### Get list of valid leagues ###
+league_json = get_endpoint(f'{base_url}/sports',params=base_params)
+league_keys = [item['key'] for item in league_json]
 
-def chat_completion_with_function_execution(messages, functions=[None]):
-  """This function makes a ChatCompletion API call with the option of adding functions"""
-  response = chat_completion_request(messages, functions)
-  full_message = response.choices[0]
-  if full_message.finish_reason == "function_call":
-    print(f"Function generation requested, calling function")
-    return call_odds_function(messages, full_message)
-  else:
-    print(f"Function not required, responding to user")
-    return response
+    
 
-def call_odds_function():
-    ...
-
-
-
-
-available_functions = [
+starting_functions = [
     {
-        "name":"get_odds",
-        "description": "Use this function to get all the live odds for the sport the user wants advice on.",
+        "name":"get_events",
+        "description": "Use this function to get the events for the league the user is requesting info on. Only call this if you need to get a specific event.",
         "parameters": {
             "type":"object",
             "properties": {
                 "league": {
                     "type":"string",
-                    "description":"The league the user is requesting advice on.",
-                    "enum":possible_leagues
+                    "description":"The league the user is requesting info on",
+                    "enum": league_keys
                 }
             }
         }
     }
-  ]
-assistant = client.beta.assistants.create(
-  instructions="You are a sports betting advisor. Use the provided tools to answer the user questions.",
-  model="gpt-3.5-turbo",
-  tools=available_functions
-)
+    ]
+main = Conversation(
+    """You are a sports betting advisor. Use the functions to answer the users questions. 
+    Be consise in your answer, combining data from multiple sources when possible. 
+    Only give your recommendation with a very brief description of the odds.""", 
+    functions=starting_functions, 
+    callback=call_odds_function
+    )
+
+main.add_message("user", prompt)
+
+print(main.complete())
