@@ -87,7 +87,6 @@ def call_odds_function(convo, full_message):
             if league_key is None or event_dict is None:
                 raise ValueError("League and events must be defined by calling get_events before calling get_odds")
             teams = parsed_output['teams']
-            
             if teams not in event_dict:
                 raise ValueError("That match does not exist in the league requested. Please try again with a different league.")
             id = event_dict[teams]
