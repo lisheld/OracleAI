@@ -14,10 +14,7 @@ client = OpenAI(api_key=os.getenv('openai'))
 GPT_MODEL = "gpt-3.5-turbo"
 
 base_url = 'https://api.the-odds-api.com/v4'
-base_params={'apiKey':odds_api_key}
-
-prompt = input("Enter your question: ")
-    
+base_params={'apiKey':odds_api_key}    
 
 
 def call_odds_function(convo, full_message):
@@ -26,15 +23,11 @@ def call_odds_function(convo, full_message):
     func = full_message.message.function_call
     try:
         parsed_output = json.loads(func.arguments)
-        print(parsed_output)
         name = func.name
-        print(f"Function {name} requested.")
         if name == "get_events":
-            if "league" not in parsed_output:
-                raise ValueError("No league provided. Ask the user to be more explicit.")
-            convo['league'] = parsed_output["league"]
+            convo['league'] = parsed_output["league"] if "league" in parsed_output else "upcoming"
             events_json = get_endpoint(f"{base_url}/sports/{convo['league']}/events",base_params)
-            convo['event_dict'] = {f'{event["home_team"]},{event["away_team"]}': event['id'] for event in events_json}
+            convo['event_dict'] = {f'{event["home_team"]},{event["away_team"]}': event['id'] for event in events_json} if convo['league'] != "upcoming" else {f'{event["home_team"]},{event["away_team"]}': (event['id'],event['key']) for event in events_json}
             odds_function = {
                 "name":"get_odds",
                 "description": "Use this function to get the specific live odds for the event the user wants advice on.",
@@ -90,6 +83,12 @@ def call_odds_function(convo, full_message):
             if teams not in event_dict:
                 raise ValueError("That match does not exist in the league requested. Please try again with a different league.")
             id = event_dict[teams]
+            if league_key == "upcoming":
+                events_json = get_endpoint(f"{base_url}/sports/upcoming/events",base_params)
+                for event in events_json:
+                    if event['id'] == id:
+                        event = event
+                        break
             event = get_endpoint(f"{base_url}/sports/{league_key}/events/{id}/odds", base_params|{"regions":"us","markets":parsed_output['market']})
             new_outcomes = average_market_odds(event)
             out = json.dumps(new_outcomes)
@@ -111,7 +110,6 @@ def call_odds_function(convo, full_message):
     except Exception as e:
         print(f'Error: {e}')
         out = e
-    print(out)
     convo.add_message("function", str(out), name)
     response = convo.complete()
     return response
@@ -126,7 +124,7 @@ league_keys = [item['key'] for item in league_json]
 starting_functions = [
     {
         "name":"get_events",
-        "description": "Use this function to get the events for the league the user is requesting info on. Only call this if you need to get a specific event.",
+        "description": "Use this function to get the events for the league the user is requesting info on.",
         "parameters": {
             "type":"object",
             "properties": {
@@ -134,7 +132,8 @@ starting_functions = [
                     "type":"string",
                     "description":"The league the user is requesting info on",
                     "enum": league_keys
-                }
+                },
+                
             }
         }
     }
@@ -146,7 +145,10 @@ main = Conversation(
     functions=starting_functions, 
     callback=call_odds_function
     )
+prompt = input("Enter your question: ")
+while prompt != "exit":
+    main.add_message("user", prompt)
+    print(main.complete())
+    prompt = input("Enter your question: ")
 
-main.add_message("user", prompt)
 
-print(main.complete())

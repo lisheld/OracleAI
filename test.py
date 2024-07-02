@@ -1,8 +1,6 @@
-from helpers import add_outcomes
+from helpers import get_endpoint
 
-dict1 = {'a': {'odds': 3.5, 'count': 2}, 'b': {'odds': 5.5, 'count': 2}}
-
-dict2 = {'a': {'odds': 1.5, 'count': 1}, 'b': {'odds': 2.5, 'count': 1}}
-print(dict1)
-add_outcomes(dict1,dict2)
-print(dict1)
+base_url = 'https://api.the-odds-api.com/v4'
+base_params = {'apiKey': "ca938397d0849ca624c7d0043fd62b91"}   
+sports = get_endpoint(f"{base_url}/sports", params = base_params|{'all':'true'})
+print({sport['key']: ['outrights'] if sport['has_outrights'] else ['h2h','spreads','totals'] for sport in sports})
