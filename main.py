@@ -1,10 +1,7 @@
 from openai import OpenAI
-import openai
 from dotenv import load_dotenv
 from helpers import *
 import os
-import json
-from collections import defaultdict
 import json
 
 

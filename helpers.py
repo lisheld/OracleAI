@@ -1,205 +1,12 @@
 import requests
-import json
 from openai import OpenAI
-from dotenv import load_dotenv
-import os
-from collections import defaultdict
-load_dotenv()
-client = OpenAI(api_key=os.getenv('openai'))
-GPT_MODEL = "gpt-3.5-turbo"
-
-
-
-player_props = {
-    'americanfootball_nfl': [
-    "player_pass_tds",
-    "player_pass_yds",
-    "player_pass_completions",
-    "player_pass_attempts",
-    "player_pass_interceptions",
-    "player_pass_longest_completion",
-    "player_rush_yds",
-    "player_rush_attempts",
-    "player_rush_longest",
-    "player_receptions",
-    "player_reception_yds",
-    "player_reception_longest",
-    "player_kicking_points",
-    "player_field_goals",
-    "player_tackles_assists",
-    "player_1st_td",
-    "player_last_td",
-    "player_anytime_td"
-    ],
-    'americanfootball_ncaaf': [
-    "player_pass_tds",
-    "player_pass_yds",
-    "player_pass_completions",
-    "player_pass_attempts",
-    "player_pass_interceptions",
-    "player_pass_longest_completion",
-    "player_rush_yds",
-    "player_rush_attempts",
-    "player_rush_longest",
-    "player_receptions",
-    "player_reception_yds",
-    "player_reception_longest",
-    "player_kicking_points",
-    "player_field_goals",
-    "player_tackles_assists",
-    "player_1st_td",
-    "player_last_td",
-    "player_anytime_td"
-    ],
-    'basketball_nba': [
-    "player_points",
-    "player_rebounds",
-    "player_assists",
-    "player_threes",
-    "player_blocks",
-    "player_steals",
-    "player_blocks_steals",
-    "player_turnovers",
-    "player_points_rebounds_assists",
-    "player_points_rebounds",
-    "player_points_assists",
-    "player_rebounds_assists",
-    "player_first_basket",
-    "player_double_double",
-    "player_triple_double"
-    ],
-    'basketball_ncaab': [
-    "player_points",
-    "player_rebounds",
-    "player_assists",
-    "player_threes",
-    "player_blocks",
-    "player_steals",
-    "player_blocks_steals",
-    "player_turnovers",
-    "player_points_rebounds_assists",
-    "player_points_rebounds",
-    "player_points_assists",
-    "player_rebounds_assists",
-    "player_first_basket",
-    "player_double_double",
-    "player_triple_double"
-    ],
-    'basketball_wnba': [
-    "player_points",
-    "player_rebounds",
-    "player_assists",
-    "player_threes",
-    "player_blocks",
-    "player_steals",
-    "player_blocks_steals",
-    "player_turnovers",
-    "player_points_rebounds_assists",
-    "player_points_rebounds",
-    "player_points_assists",
-    "player_rebounds_assists",
-    "player_first_basket",
-    "player_double_double",
-    "player_triple_double"
-    ],
-    'baseball_mlb': [
-    "batter_home_runs",
-    "batter_first_home_run",
-    "batter_hits",
-    "batter_total_bases",
-    "batter_rbis",
-    "batter_runs_scored",
-    "batter_hits_runs_rbis",
-    "batter_singles",
-    "batter_doubles",
-    "batter_triples",
-    "batter_walks",
-    "batter_strikeouts",
-    "batter_stolen_bases",
-    "pitcher_strikeouts",
-    "pitcher_record_a_win",
-    "pitcher_hits_allowed",
-    "pitcher_walks",
-    "pitcher_earned_runs",
-    "pitcher_outs"
-    ],
-    'icehockey_nhl': [
-    "player_points",
-    "player_power_play_points",
-    "player_assists",
-    "player_blocked_shots",
-    "player_shots_on_goal",
-    "player_goals",
-    "player_total_saves",
-    "player_goal_scorer_first",
-    "player_goal_scorer_last",
-    "player_goal_scorer_anytime"
-    ],
-    'soccer_epl': [
-    "player_goal_scorer_anytime",
-    "player_first_goal_scorer",
-    "player_last_goal_scorer",
-    "player_to_receive_card",
-    "player_to_receive_red_card",
-    "player_shots_on_target",
-    "player_shots",
-    "player_assists"
-    ],
-    'soccer_france_ligue_one': [
-    "player_goal_scorer_anytime",
-    "player_first_goal_scorer",
-    "player_last_goal_scorer",
-    "player_to_receive_card",
-    "player_to_receive_red_card",
-    "player_shots_on_target",
-    "player_shots",
-    "player_assists"
-    ],
-    'soccer_germany_bundesliga': [
-    "player_goal_scorer_anytime",
-    "player_first_goal_scorer",
-    "player_last_goal_scorer",
-    "player_to_receive_card",
-    "player_to_receive_red_card",
-    "player_shots_on_target",
-    "player_shots",
-    "player_assists"
-    ],
-    'soccer_italy_serie_a': [
-    "player_goal_scorer_anytime",
-    "player_first_goal_scorer",
-    "player_last_goal_scorer",
-    "player_to_receive_card",
-    "player_to_receive_red_card",
-    "player_shots_on_target",
-    "player_shots",
-    "player_assists"
-    ],
-    'soccer_spain_la_liga': [
-    "player_goal_scorer_anytime",
-    "player_first_goal_scorer",
-    "player_last_goal_scorer",
-    "player_to_receive_card",
-    "player_to_receive_red_card",
-    "player_shots_on_target",
-    "player_shots",
-    "player_assists"
-    ],
-    'soccer_usa_mls': [
-    "player_goal_scorer_anytime",
-    "player_first_goal_scorer",
-    "player_last_goal_scorer",
-    "player_to_receive_card",
-    "player_to_receive_red_card",
-    "player_shots_on_target",
-    "player_shots",
-    "player_assists"
-    ]
-}
+from vars import GPT_MODEL, openai_api_key
+client = OpenAI(api_key=openai_api_key)
 
 
 def get_endpoint(url,params):
     response = requests.get(url,params=params)
+    # print(response.url)
     if (code:=response.status_code) != 200:
         raise ValueError(f"Failed to fetch data. Status code: {code}")
     return response.json()
@@ -262,6 +69,15 @@ class Conversation:
     
     def add_func(self,func):
         self.functions.append(func)
+
+def check_keys(keys:list,parsed:dict):
+    for key in keys:
+        if key not in parsed:
+            if key[:-1] != 's':
+                raise ValueError(f"Please specify a valid {key}.")
+            else:
+                raise ValueError(f"Please specify valid {key}.")
+
 
 def add_outcomes(dict1,dict2):
     """Adding two dictionaries of outcomes together. The first dictionary is the one that will be modified."""
