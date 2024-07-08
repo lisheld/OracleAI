@@ -33,7 +33,7 @@ def function_parser(convo,full_message):
     name = func.name
     print(f'Calling function: {name}')
     if name == 'init':
-        out = init(convo,parsed_output, frozenset(['get_odds','get_advice','get_scores','get_markets','get_events']))
+        out = init(convo,parsed_output)
     elif name == 'get_events':
         out = get_events(convo,parsed_output)
     elif name == 'get_markets':
@@ -42,10 +42,9 @@ def function_parser(convo,full_message):
         out = get_scores(convo,parsed_output)
     elif name == 'get_odds':
         out = get_odds(convo,parsed_output)
-    elif name == 'get_advice':
-        out = get_advice(convo,parsed_output)
-    for line in out:
-        out = print(line)  
+    elif name == 'get_best_odds':
+        out = get_best_odds(convo,parsed_output)
+    print(out.join('\n'))
     # except Exception as e:
     #     print(f'Error: {e}')
     
@@ -56,7 +55,7 @@ main = Conversation(
     callback=function_parser
     )
 # prompt = input("Enter your question: ")
-prompt = 'what is your advice for the spain germany euros game?'
+prompt = 'what are some upcoming mlb games?'
 main.add_message("user", prompt)
 main.complete(onlyFunc=True)
         

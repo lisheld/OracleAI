@@ -6,12 +6,12 @@ client = OpenAI(api_key=openai_api_key)
 
 def get_endpoint(url,params):
     response = requests.get(url,params=params)
-    # print(response.url)
+    print(response.url)
     if (code:=response.status_code) != 200:
         raise ValueError(f"Failed to fetch data. Status code: {code}")
     return response.json()
 
-def chat_completion_request(messages, functions=None, model=GPT_MODEL):
+def chat_completion_request(messages, functions=None, model=GPT_MODEL, funcToCall=None):
     try:
         response = client.chat.completions.create(
         model=model,
@@ -41,7 +41,7 @@ class Conversation:
             message = {"role": role, "content": content}
         self.conversation_history.append(message)
     
-    def complete(self, noFunc = False, onlyFunc=False):
+    def complete(self, noFunc = False, onlyFunc=False, funcToCall = None):
         if not self.functions or noFunc:
             response = chat_completion_request(self.conversation_history)
             text = response.choices[0].message.content
@@ -53,7 +53,7 @@ class Conversation:
             if full_message.finish_reason == "function_call":
                 if self.callback is None:
                     raise AttributeError("No callback function defined.")
-                return self.callback(self, full_message)
+                return self.callback(self, full_message, funcToCall)
             elif not onlyFunc:
                 text = full_message.message.content
                 self.add_message("assistant", text)
@@ -70,49 +70,23 @@ class Conversation:
     def add_func(self,func):
         self.functions.append(func)
 
-def check_keys(keys:list,parsed:dict):
+def check(keys:list,dictionary:dict, message:str=None):
+    error_messages = {
+    'key': lambda key: f"{key} is not a valid key.",
+    'teams': lambda teams: f"{teams} is not a valid event.",
+    'league': lambda league: f"{league} is not a valid league.",
+    'market': lambda market: f"{market} is not a valid market.",
+    }
     for key in keys:
-        if key not in parsed:
-            if key[:-1] != 's':
-                raise ValueError(f"Please specify a valid {key}.")
+        if key not in dictionary:
+            if message is not None:
+                raise KeyError(error_messages[message](key))
             else:
-                raise ValueError(f"Please specify valid {key}.")
+                raise KeyError(f"{key} is not a valid key.")
 
 
-def add_outcomes(dict1,dict2):
-    """Adding two dictionaries of outcomes together. The first dictionary is the one that will be modified."""
-    assert isinstance(dict1,dict) and isinstance(dict2,dict), "Both inputs must be dictionaries"
-    for outcome, info2 in dict2.items():
-        if outcome in dict1:
-            info1 = dict1[outcome]
-            newinfo = {val: info1[val] + info2[val] for val in info2}
-            dict1[outcome] = newinfo 
-        else:
-            dict1[outcome] = info2
-def outcomes_to_dict(outcomes):
-    out = {}
-    initial = outcomes[0]
-    if 'description' in initial:
-        for outcome in outcomes:
-            description = outcome['description']
-            name = outcome['name']
-            other = {i:outcome[i] for i in outcome if i not in {'description','name'}}|{'count':1}
-            out[f'{name}, {description}'] = other
-    else: 
-        for outcome in outcomes:
-            name = outcome['name']
-            other = {i:outcome[i] for i in outcome if i !='name'}|{'count':1}
-            out[name] = other
-    return out
 
-def average_market_odds(event):
-    new_outcomes = outcomes_to_dict(event['bookmakers'][0]['markets'][0]['outcomes'])
-    for bookmaker in event['bookmakers'][1:]:
-        add_outcomes(new_outcomes,outcomes_to_dict(bookmaker['markets'][0]['outcomes']))
-    
-    for outcome, info in new_outcomes.items():
-        count = info['count']
-        new_outcomes[outcome] = {i: round(info[i]/count, 2) for i in info if i != 'count'}
-    return new_outcomes
+
+
 
 

@@ -5,12 +5,11 @@ load_dotenv()
 
 odds_api_key = os.getenv('odds')
 openai_api_key = os.getenv('openai')
+discord_api_key = os.getenv('discord')
 GPT_MODEL = "gpt-3.5-turbo"
 
 base_url = 'https://api.the-odds-api.com/v4'
 base_params={'apiKey':odds_api_key}
-
-
 
 player_props = {
     'americanfootball_nfl': [

@@ -1,2 +1,2 @@
-a = {'a':1}
-b = frozenset(a)
+a = {frozenset({1,2}):3}
+print(a[frozenset({1,2})])
