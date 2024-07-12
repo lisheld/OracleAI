@@ -40,7 +40,8 @@ def initialize():
                         "description":"The league the user is requesting info on.",
                         "enum": league_names
                     } 
-                }
+                },
+                "required": ["league"]
             }
         }
         ]
@@ -68,7 +69,7 @@ def initialize():
         except Exception as e:
             return [str(e)]
     main = Conversation(
-        """You are a sports betting advisor. Use the functions to answer the users questions. ALWAYS call the init function first when responding to user input.""", 
+        """You are a sports betting advisor. Use the functions to answer the users questions. NEVER make assumptions about parameters to pass in. If the user's request is unclear, ask for clarification. ALWAYS call the init function first when responding to user input, but ONLY if they have specified a sports league.""", 
         functions=starting_functions, 
         callback=function_parser
         )
@@ -78,35 +79,35 @@ def call_function(func, args):
     joined = ' '.join(args)
     main = initialize()
     main.add_message("user", joined)
-    out = main.complete(funcToCall=func)
+    out = main.complete(funcToCall = func)
     print(out)
-    return '\n'.join(out)
+    return '\n'.join(out) if isinstance(out, list) else out
 @bot.command(name='events')
 async def events(ctx, *args):
     await ctx.send(call_function('get_events', args))
 
 @bot.command(name='odds')
-async def events(ctx, *args):
+async def odds(ctx, *args):
     await ctx.send(call_function('get_odds', args))
 
 @bot.command(name='markets')
-async def events(ctx, *args):
+async def markets(ctx, *args):
     await ctx.send(call_function('get_markets', args))
 
 @bot.command(name='best')
-async def events(ctx, *args):
+async def best(ctx, *args):
     await ctx.send(call_function('get_best_odds', args))
 
 @bot.command(name='scores')
-async def events(ctx, *args):
+async def scores(ctx, *args):
     await ctx.send(call_function('get_scores', args))
 
 @bot.command(name='arb')
-async def events(ctx, *args):
+async def arb(ctx, *args):
     await ctx.send(call_function('get_arb', args))
 
 @bot.command(name='leagues')
-async def events(ctx):
+async def leagues(ctx):
     out = [f"## Available Leagues: "]
     for group in league_groups:
         out.append(f"### {group}")

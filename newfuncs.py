@@ -1,135 +1,47 @@
-from helpers import *
-from vars import player_props, base_url, base_params
+from helpers import classify,get_endpoint
+from vars import base_url, base_params, player_props
 from collections import defaultdict
 from datetime import datetime
 
-def init(convo,parsed_output, funcToCall:str, league_keydict):
-    check(['league'],parsed_output, 'key')
-    check([parsed_output['league']],league_keydict, 'league')
-    convo['league'] = parsed_output['league']
-    convo['league_key'] = league_keydict[parsed_output['league']]
-    
-    events_json = get_endpoint(f"{base_url}/sports/{convo['league_key']}/events",base_params)
-    scores_json = get_endpoint(f"{base_url}/sports/{convo['league_key']}/scores",base_params|{'daysFrom':3})
-    event_dict = {}
+league_json = get_endpoint(f'{base_url}/sports', params = base_params)
+league_names = []
+league_keydict = {}
+league_groups = defaultdict(list)
+for item in league_json:
+    if not item['has_outrights']:
+        league_names.append(item['title'])
+        league_keydict[item['title']] = item['key']
+        league_groups[item['group']].append(item['title'])
+
+def get_leagues(_):
+    out = [f"## Available Leagues: "]
+    for group in league_groups:
+        out.append(f"### {group}")
+        out.extend([f"* {league}" for league in league_groups[group]])
+    return out
+
+def get_events(inp:str):
+    league = classify(inp, "the league the sports event is in", league_names)
+    league_key = league_keydict[league]
+    events_json = get_endpoint(f"{base_url}/sports/{league_key}/events",base_params)
     event_list = []
-    event_teams = []
-    score_dict = {}
-    score_teams = []
     for event in events_json:
-        event_dict[frozenset({event["home_team"],event["away_team"]})] = event['id']
         dt = datetime.strptime(event['commence_time'], '%Y-%m-%dT%H:%M:%SZ')
         time = dt.strftime("%B %d, %I:%M %p UTC")
         event_list.append((f"* {event['home_team']} vs {event['away_team']}",time))
-        event_teams.append(f'{event["home_team"]}, {event["away_team"]}')
-    for event in scores_json:
-        if event['scores'] is not None:
-            score_dict[frozenset({event["scores"][0]["name"], event["scores"][1]["name"]})] = f"### {event['scores'][0]['name']}: {event['scores'][0]['score']}\n### {event['scores'][1]['name']}: {event['scores'][1]['score']}"
-            score_teams.append(f'{event["scores"][0]["name"]}, {event["scores"][1]["name"]}')      
-    convo['event_dict'] = event_dict
-    convo['markets'] = ['h2h','spreads','totals'] + (player_props[convo['league_key']] if convo['league_key'] in player_props else [])
-    convo['score_dict'] = score_dict
-    convo['event_list'] = event_list
-    convo.add_func(
-            {
-                "name":"get_odds",
-                "description": "Use this function to get the specific live odds for the event the user wants advice on.",
-                "parameters": {
-                    "type":"object",
-                    "properties": {
-                        "teams": {
-                            "type":"string",
-                            "description":"The teams involved in the event",
-                            "enum": event_teams
-                        },
-                        "market": {
-                            "type":"string",
-                            "description":"The type of odds to get.",
-                            "enum": convo['markets']
-                        }
-                    },
-                    "required":["teams","market"]
-                }
-            }
-        )
-    convo.add_func(
-        {
-            "name":"get_best_odds",
-            "description": "Use this function to get the best odds across bookmakers for a certain event.",
-            "parameters": {
-                "type":"object",
-                "properties": {
-                    "teams": {
-                        "type":"string",
-                        "description":"The teams involved in the event",
-                        "enum": event_teams
-                    },
-                    "market": {
-                        "type":"string",
-                        "description":"The type of odds to get.",
-                        "enum": convo['markets']
-                    }
-                },
-                "required":["teams","market"]
-            }
-        }
-    )
-    convo.add_func(
-        {
-            "name":"get_scores",
-            "description": "Use this function to get the scores for the league the user is requesting info on.",
-            "parameters": {
-                'type':'object',
-                'properties':{
-                    'teams':{
-                        'type':'string',
-                        'description':'The teams involved in the event',
-                        'enum': score_teams
-                    }
-                },
-                "required":["teams"]
-            }
-        }
-    )
-    convo.add_func(
-        {
-            "name":"get_markets",
-            "description": "Use this function to get the markets for the league the user is requesting info on."
-        }
-    )
-    convo.add_func(
-        {
-            "name":"get_events",
-            "description": "Use this function to get the events for the league the user is requesting info on."
-        }
-    )
-    convo.add_func(
-        {
-            "name":"get_arb",
-            "description": "Use this function to find arbitrage bets for the league the user is requesting info on."
-        }
-    )
-    if funcToCall:
-        convo.add_message('function', f'Successfully initialized. Call the function {funcToCall} now ONLY if the user has provided the required parameters.', 'init')
-    else:
-        convo.add_message('function', 'Successfully initialized. Call the function the user wants now ONLY if the user has provided the required parameters.', 'init')
-    return convo.complete()
+    if event_list == []:
+        return [f'## No upcoming events found for {league}']
+    return [f'## Upcoming {league} matches: '] + [f"{event[0]}: {event[1]}" for event in event_list]
 
-def get_events(convo,_):
-    if convo['event_list'] == []:
-        return [f'## No upcoming events found for {convo["league"]}']
-    shortened = convo['event_list'][:5]
-    return [f'## Upcoming {convo["league"]} matches: '] + [f"{event[0]}: {event[1]}" for event in shortened]
-
-def get_odds(convo,parsed_output):
-    check(['teams','market'],parsed_output, 'key')
-    teams = parsed_output['teams']
-    set_teams = frozenset(teams.split(', '))
-    market = parsed_output['market']
-    check([market],convo['markets'], 'market')
-    league_key = convo['league_key']
-    check([set_teams],convo['event_dict'], 'teams')
-    id = convo['event_dict'][set_teams]
+def get_odds(inp:str):
+    league = classify(inp, "the league the sports event is in", league_names)
+    league_key = league_keydict[league]
+    events_json = get_endpoint(f"{base_url}/sports/{league_key}/events",base_params)
+    event_dict = {f"{event['home_team']} vs {event['away_team']}":event['id'] for event in events_json}
+    teams = classify(inp, "the matchup of teams taking place", list(event_dict.keys()))
+    markets = ['h2h','spreads','totals'] + (player_props[league_key] if league_key in player_props else [])
+    market = classify(inp, "the market the user wants odds for", markets)
+    id = event_dict[teams]
     odds_json = get_endpoint(f"{base_url}/sports/{league_key}/events/{id}/odds", base_params | {'regions':'us','markets':market, "oddsFormat":"american"})
     out = [f"## The odds for {market} on {teams} are: "]
     for bookmaker in odds_json['bookmakers']:
@@ -165,25 +77,32 @@ def get_odds(convo,parsed_output):
         out.append('')
     return out
 
-def get_scores(convo,parsed_output):
-    check(['teams'],parsed_output, 'key')
-    teams = parsed_output['teams']
-    set_teams = frozenset(teams.split(', '))
-    check([set_teams],convo['score_dict'], 'teams')
-    return [convo['score_dict'][set_teams]]
+def get_scores(inp:str):
+    league = classify(inp, "the league the sports event is in", league_names)
+    league_key = league_keydict[league]
+    scores_json = get_endpoint(f"{base_url}/sports/{league_key}/scores", base_params)
+    score_dict = {}
+    for event in scores_json:
+        if event['scores'] is not None:
+            score_dict[f'{event["scores"][0]["name"]} vs {event["scores"][1]["name"]}'] = f"### {event['scores'][0]['name']}: {event['scores'][0]['score']}\n### {event['scores'][1]['name']}: {event['scores'][1]['score']}"
+    teams = classify(inp, "the teams involved in the sports event.", list(score_dict.keys()))
+    return [score_dict[teams]]
 
-def get_markets(convo,_):
-    return [f'## Here are the available markets for {convo["league_key"]}: ']+[f"* {market}" for market in convo['markets']]
+def get_markets(inp:str):
+    league = classify(inp, "the league the sports event is in", league_names)
+    league_key = league_keydict[league]
+    markets = ['h2h','spreads','totals'] + (player_props[league_key] if league_key in player_props else [])
+    return [f'## Here are the available markets for {league}: ']+[f"* {market}" for market in markets]
 
-def get_best_odds(convo,parsed_output):
-    check(['teams','market'],parsed_output, 'key')
-    teams = parsed_output['teams']
-    set_teams = frozenset(teams.split(', '))
-    check([set_teams],convo['event_dict'], 'teams')
-    market = parsed_output['market']
-    check([market],convo['markets'], 'market')
-    league_key = convo['league_key']
-    id = convo['event_dict'][set_teams]
+def get_best_odds(inp:str):
+    league = classify(inp, "the league the sports event is in", league_names)
+    league_key = league_keydict[league]
+    events_json = get_endpoint(f"{base_url}/sports/{league_key}/events",base_params)
+    event_dict = {f"{event['home_team']} vs {event['away_team']}":event['id'] for event in events_json}
+    teams = classify(inp, "the teams involved in the sports event", list(event_dict.keys()))
+    markets = ['h2h','spreads','totals'] + (player_props[league_key] if league_key in player_props else [])
+    market = classify(inp, "the market the user wants odds for", markets)
+    id = event_dict[teams]
     odds_json = get_endpoint(f"{base_url}/sports/{league_key}/events/{id}/odds", base_params | {'regions':'us','markets':market, "oddsFormat":"american"})
     current_best = {}
     probe = odds_json['bookmakers'][0]['markets'][0]['outcomes'][0]
@@ -224,9 +143,10 @@ def get_best_odds(convo,parsed_output):
     else:
         ### This is a moneyline bet ###
         return helper('n')
-                        
-def get_arbitrages(convo, _):
-    league_key = convo['league_key']
+
+def get_arbitrages(inp:str):
+    league = classify(inp, "the league the sports event is in", league_names)
+    league_key = league_keydict[league]
     all_odds_json = get_endpoint(f"{base_url}/sports/{league_key}/odds", base_params | {'regions':'us', "oddsFormat":"american", "markets":"h2h,spreads,totals"})
     
     arbitrages = defaultdict(list)

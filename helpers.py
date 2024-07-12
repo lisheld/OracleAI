@@ -1,6 +1,7 @@
 import requests
 from openai import OpenAI
 from vars import GPT_MODEL, openai_api_key
+import json
 client = OpenAI(api_key=openai_api_key)
 
 
@@ -11,12 +12,13 @@ def get_endpoint(url,params):
         raise ValueError(f"Failed to fetch data. Status code: {code}")
     return response.json()
 
-def chat_completion_request(messages, functions=None, model=GPT_MODEL, funcToCall=None):
+def chat_completion_request(messages, functions=None, model=GPT_MODEL, output_type="text"):
     try:
         response = client.chat.completions.create(
         model=model,
         messages=messages,
         functions=functions,
+        response_format={'type': output_type}
         )
         return response
     except Exception as e:
@@ -41,9 +43,10 @@ class Conversation:
             message = {"role": role, "content": content}
         self.conversation_history.append(message)
     
-    def complete(self, noFunc = False, onlyFunc=False, funcToCall = None):
-        if not self.functions or noFunc:
-            response = chat_completion_request(self.conversation_history)
+    def complete(self, funcToCall = None, output_type="text"):
+        if not self.functions:
+            response = chat_completion_request(self.conversation_history, output_type=output_type)
+            print(response)
             text = response.choices[0].message.content
             self.add_message("assistant",text)
             return text
@@ -54,12 +57,10 @@ class Conversation:
                 if self.callback is None:
                     raise AttributeError("No callback function defined.")
                 return self.callback(self, full_message, funcToCall)
-            elif not onlyFunc:
+            else:
                 text = full_message.message.content
                 self.add_message("assistant", text)
                 return text
-            else:
-                raise ValueError("I can't do that with my current capabilities, sorry!")
     
     def __setitem__(self, var, val):
         self.vars[var] = val
@@ -69,6 +70,9 @@ class Conversation:
     
     def add_func(self,func):
         self.functions.append(func)
+    
+    def __repr__(self):
+        return '\n'.join([message['content'] for message in self.conversation_history])
 
 def check(keys:list,dictionary:dict, message:str=None):
     error_messages = {
@@ -84,6 +88,16 @@ def check(keys:list,dictionary:dict, message:str=None):
             else:
                 raise KeyError(f"{key} is not a valid key.")
 
+
+def classify(inp:str, type_of_input:str, options:list):
+    main = Conversation(f"""
+                        You are an expert in identifying {type_of_input} from a user input. Select {type_of_input} from the following options: {options}, and return an error if none of the options match. Return the output as a JSON object.""")
+    main.add_message("user",inp)
+    out = json.loads(main.complete(output_type="json_object"))
+    if "error" in out:
+        raise Exception(out['error'])
+    return list(out.values())[0]
+    
 
 
 
