@@ -46,7 +46,6 @@ class Conversation:
     def complete(self, funcToCall = None, output_type="text"):
         if not self.functions:
             response = chat_completion_request(self.conversation_history, output_type=output_type)
-            print(response)
             text = response.choices[0].message.content
             self.add_message("assistant",text)
             return text
@@ -87,19 +86,6 @@ def check(keys:list,dictionary:dict, message:str=None):
                 raise KeyError(error_messages[message](key))
             else:
                 raise KeyError(f"{key} is not a valid key.")
-
-
-def classify(inp:str, type_of_input:str, options:list):
-    main = Conversation(f"""
-                        You are an expert in identifying {type_of_input} from a user input. Select {type_of_input} from the following options: {options}, and return an error if none of the options match. Return the output as a JSON object.""")
-    main.add_message("user",inp)
-    out = json.loads(main.complete(output_type="json_object"))
-    if "error" in out:
-        raise Exception(out['error'])
-    return list(out.values())[0]
-    
-
-
 
 
 

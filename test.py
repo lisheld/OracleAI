@@ -1,7 +1,3 @@
-from helpers import classify
-print(classify("what are the odds in the poop league", "the league the sports event is in", ["UEFA Euro 2024", "La Liga - Spain", "English Premier League"]))
+from newfuncs import get_prediciton
 
-
-
-
-    
+print(get_prediciton("spain vs england uefa euros 2024 spreads"))
