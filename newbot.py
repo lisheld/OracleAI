@@ -20,7 +20,7 @@ async def on_ready():
 
 def is_premium():
     async def predicate(interaction: discord.Interaction):
-        premium_role = discord.utils.get(interaction.guild.roles, name="premium")
+        premium_role = discord.utils.get(interaction.guild.roles, name="Premium")
         if premium_role in interaction.user.roles:
             return True
         await interaction.response.send_message("You don't have the premium role to use this command.", ephemeral=True)
