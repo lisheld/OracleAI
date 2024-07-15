@@ -35,7 +35,7 @@ def get_events(inp:str):
         event_list.append((f"* {event['home_team']} vs {event['away_team']}",time))
     if event_list == []:
         return [f'## No upcoming events found for {league}']
-    limit = 5
+    limit = 10
     return [f'## Upcoming {league} matches: '] + [f"{event[0]}: {event[1]}" for event in event_list[:limit]]
 
 def get_odds(inp:str):
