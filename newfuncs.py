@@ -342,7 +342,8 @@ def get_advice(inp:str):
                 outcomes = bookmaker['markets'][0]['outcomes']
                 for outcome in outcomes:
                     if keyfunc(outcome.get('name'),outcome.get('description'),outcome.get('point')) == best['outcome'] and 1/outcome['price'] == best['price']:
-                        return [f'## Based on the current odds, my advice is to bet on {outcome["name"]} at {outcome["price"]} at {bookmaker["title"]}']
+                        american = f'+{round((outcome["price"]-1)*100)}' if outcome['price'] >= 2 else round(-100/(outcome['price']-1))
+                        return [f'## Based on the current odds, my advice is to bet on {outcome["name"]} at {american} at {bookmaker["title"]}']
             
 
 

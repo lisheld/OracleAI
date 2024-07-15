@@ -77,18 +77,6 @@ def classify_market(inp, options):
     else:
         raise Exception("Unable to determine market. Use /market {league} to see a list of all markets.")
 
-# def classify_function(inp, options):
-#     main = Conversation(f"""The user is asking for sports betting advice. You are an expert in identifying the what functionality would be best to call to help the user. Select ONLY one of the following functions: {options}, or return an error if none of the functions match, but ONLY select an option if they have mentioned it in some form in their input. Return the output as a JSON object with one entry of the form "function":"example_function".""")
-#     main.add_message("user", inp)
-#     out = json.loads(main.complete(output_type="json_object"))
-#     if "error" in out:
-#         raise Exception(out['error'])
-#     out_message = list(out.values())[0]
-#     if out_message in options:
-#         return out_message
-#     else:
-#         raise Exception("Unable to determine function to call.")
-
 def add_tuples(t1,t2):
     return tuple(i+j for i,j in zip(t1,t2))
     
