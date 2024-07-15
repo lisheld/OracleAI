@@ -333,7 +333,7 @@ def get_arbitrages(inp:str):
     if arbitrages:
         out = [f'## Arbitrages found!']
         for (home,away),bets in arbitrages.items():
-            out.append(f'{home} vs {away}')
+            out.append(f'### {home} vs {away}')
             for bet in bets:
                 for leg,(price,bookmaker) in bet.items():
                     title = leg[0] if len(leg) == 1 else f'{leg[0]}, {leg[1]}'
