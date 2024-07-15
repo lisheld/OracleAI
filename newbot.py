@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 from vars import discord_api_key
 from newfuncs import * 
-catch_errors = False
+catch_errors = True
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix=commands.when_mentioned_or('/'), intents=intents)
