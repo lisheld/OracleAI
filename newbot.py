@@ -73,7 +73,7 @@ async def scores(interaction: discord.Interaction, args: str):
     await interaction.response.send_message(call_command('scores', args), ephemeral=True)
 
 @bot.tree.command(name='arb', description="Looks for available arbitrage opportunities in a given league")
-@app_commands.describe(args="league")
+@app_commands.describe(args="sport")
 @is_premium()
 async def arb(interaction: discord.Interaction, args: str):
     await interaction.response.send_message(call_command('arb', args), ephemeral=True)
@@ -147,7 +147,7 @@ async def at_advice(ctx, *args):
 @bot.command(name='info')
 @is_premium()
 async def at_info(ctx):
-    await ctx.send("## OracleAI: A sports betting analyst\n### General Info:\nOracleAI does not have any specific syntax requirements, the information just needs to be in the message.\n**Command format: /<command> <arguments>**\n### Free commands:\n* /leagues: Gets a list of all available leagues\n* /events {league}: Gets a list of all events for a given league\n* /odds {league, teams, market}: gets the live odds for a specific market for a specific match\n* /markets {league}: gets the available markets for a specific league\n### Premium commands:\n* /best {league, teams, market}: gets the best odds for a specific market for a specific match\n* /scores {league, teams}: get the live scores for a given match from up to 3 days ago\n* /arb {league}: looks for available arbitrage opportunities in a given league\n* /predict {league, teams}: predicts the outcome of a given match\n* /advice {league, market}: suggests a bet for a given market in a given league\n### Error Handling:\nIf you are having trouble getting OracleAI to interpret your request, use standard english instead. For example, '/best spain france euros h2h' could be rewritten as '/best What are the best h2h odds for the spain vs france uefa euro game?'. If you continue to receive errors, please contact an administrator.")
+    await ctx.send("## OracleAI: A sports betting analyst\n### General Info:\nOracleAI does not have any specific syntax requirements, the information just needs to be in the message.\n**Command format: /<command> <arguments>**\n### Free commands:\n* /leagues: Gets a list of all available leagues\n* /events {league}: Gets a list of all events for a given league\n* /odds {league, teams, market}: gets the live odds for a specific market for a specific match\n* /markets {league}: gets the available markets for a specific league\n### Premium commands:\n* /best {league, teams, market}: gets the best odds for a specific market for a specific match\n* /scores {league, teams}: get the live scores for a given match from up to 3 days ago\n* /arb {league}: looks for available arbitrage opportunities in a given sport\n* /predict {league, teams}: predicts the outcome of a given match\n* /advice {league, market}: suggests a bet for a given market in a given league\n### Error Handling:\nIf you are having trouble getting OracleAI to interpret your request, use standard english instead. For example, '/best spain france euros h2h' could be rewritten as '/best What are the best h2h odds for the spain vs france uefa euro game?'. If you continue to receive errors, please contact an administrator.")
 
 if __name__ == '__main__':
     bot.run(discord_api_key)

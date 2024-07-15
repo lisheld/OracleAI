@@ -1,8 +1,9 @@
-from newhelpers import classify_teams,classify_league,classify_market,get_endpoint,add_tuples
+from newhelpers import classify_teams,classify_league,classify_market,get_endpoint,add_tuples,classify_sport
 from vars import base_url, base_params, player_props
 from collections import defaultdict
 from datetime import datetime
 import numpy as np
+from test_cases import all_odds_json
 
 
 def get_leagues(_):
@@ -169,7 +170,6 @@ def get_prediciton(inp:str):
         for bet,prob in average_dict.items():
             player,pos = bet
             new_dict[player][pos] = prob
-        newnew_dict = dict()
         for player in new_dict:
             scale = 100/sum(new_dict[player].values())
             for pos in new_dict[player]:
@@ -272,13 +272,17 @@ def get_arbitrages(inp:str):
     league_json = get_endpoint(f'{base_url}/sports', params = base_params)
     league_names = []
     league_keydict = {}
+    league_groups = defaultdict(list)
     for item in league_json:
         if not item['has_outrights']:
             league_names.append(item['title'])
             league_keydict[item['title']] = item['key']
-    league = classify_league(inp, league_names)
-    league_key = league_keydict[league]
-    all_odds_json = get_endpoint(f"{base_url}/sports/{league_key}/odds", base_params | {'regions':'us', "oddsFormat":"decimal", "markets":"h2h,spreads,totals"})
+            league_groups[item['group']].append(item['key'])
+    sport = classify_sport(inp, list(league_groups.keys()))
+    leagues = league_groups[sport]
+    all_odds_json = []
+    for league_key in leagues:
+        all_odds_json += get_endpoint(f"{base_url}/sports/{league_key}/odds", base_params | {'regions':'us', "oddsFormat":"decimal", "markets":"h2h,spreads,totals"})
     arbitrages = defaultdict(list)
     for event in all_odds_json:
         home_team,away_team = event['home_team'],event['away_team']
@@ -296,7 +300,7 @@ def get_arbitrages(inp:str):
                     if current_best[name].get(title) is None:
                         current_best[name][title] = (outcome['price'],bookmaker['title'])
                     elif outcome['price'] > current_best[name][title][0]:
-                        current_best[title] = (outcome['price'],bookmaker['title'])
+                        current_best[name][title] = (outcome['price'],bookmaker['title'])
         for market,best in current_best.items():
             if market == 'h2h':
                 if sum([1/price for price,_ in best.values()]) < 1:
@@ -335,7 +339,7 @@ def get_arbitrages(inp:str):
                 for leg,(price,bookmaker) in bet.items():
                     title = leg[0] if len(leg) == 1 else f'{leg[0]}, {leg[1]}'
                     american = f'+{round((price-1)*100)}' if price >= 2 else round(-100/(price-1))
-                    out.append(f'* {title}: {price} ({bookmaker})')
+                    out.append(f'* {title}: {american} ({bookmaker})')
         return out
                     
     else:
