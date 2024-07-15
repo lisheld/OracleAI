@@ -39,7 +39,6 @@ class Conversation:
 
 def classify_league(inp, options):
     main = Conversation(f"""The user is asking for sports related information. You are an expert in identifying the league of the event they are requesting information on. Select one of the following leagues: {options}, or return an error if none of the options match, but ONLY select an option if they have mentioned it in some form in their input. Return the output as a JSON object with one entry of the form "league":"example_league".""")
-    print(inp)
     main.add_message("user", inp)
     out = json.loads(main.complete(output_type="json_object"))
     print(out)

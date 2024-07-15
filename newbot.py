@@ -34,12 +34,13 @@ def is_premium():
 
 def call_command(command, args):
     inp = ' '.join(args) if isinstance(args,(tuple,list)) else args
+    print(f'Command: {command}, Args: {inp}')
     if catch_errors:
         try:
-            print(func_dict)
             func_out = func_dict[command](inp)
         except Exception as e:
             func_out = [f"### Error: {e}"]
+            print(f'{e.__class__.__name__} encountered: {e}')
     else:
         func_out = func_dict[command](inp)
     return '\n'.join(func_out)

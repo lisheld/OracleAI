@@ -3,7 +3,6 @@ from vars import base_url, base_params, player_props
 from collections import defaultdict
 from datetime import datetime
 import numpy as np
-from test_cases import all_odds_json
 
 
 def get_leagues(_):
