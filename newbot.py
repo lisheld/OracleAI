@@ -73,7 +73,7 @@ async def best(interaction: discord.Interaction, args: str):
 async def scores(interaction: discord.Interaction, args: str):
     await interaction.response.send_message(call_command('scores', args), ephemeral=True)
 
-@bot.tree.command(name='arb', description="Looks for available arbitrage opportunities in a given league")
+@bot.tree.command(name='arb', description="Looks for available arbitrage opportunities in a given sport")
 @app_commands.describe(args="sport")
 @is_premium()
 async def arb(interaction: discord.Interaction, args: str):
