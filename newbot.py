@@ -11,6 +11,11 @@ bot = commands.Bot(command_prefix=commands.when_mentioned, intents=intents)
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user.name}')
+
+    activity = discord.Activity(type=discord.ActivityType.listening, name="/info")
+    await bot.change_presence(activity=activity)
+    print(f'Set listening status to "/info"')
+    
     try:
         synced = await bot.tree.sync()
         print(f'Synced {len(synced)} commands')
