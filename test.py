@@ -1,3 +1,4 @@
 from vars import base_params,base_url
 from newhelpers import get_endpoint
-print(get_endpoint(f'{base_url}/sports', params = base_params|{'all':'true'}))
+from newfuncs import get_scores
+print(get_scores('Spain Engand Uefa Euros 2024'))

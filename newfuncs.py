@@ -191,6 +191,8 @@ def get_scores(inp:str):
     for event in scores_json:
         if event['scores'] is not None:
             score_dict[f'{event["scores"][0]["name"]} vs {event["scores"][1]["name"]}'] = f"### {event['scores'][0]['name']}: {event['scores'][0]['score']}\n### {event['scores'][1]['name']}: {event['scores'][1]['score']}"
+    if not score_dict:
+        raise Exception("Sorry, no scores are available for that league right now.")
     teams = classify_teams(inp, list(score_dict.keys()))
     return [score_dict[teams]]
 
