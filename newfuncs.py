@@ -287,6 +287,7 @@ def get_arbitrages(inp:str):
             for bet in bets:
                 for leg,(price,bookmaker) in bet.items():
                     title = leg[0] if len(leg) == 1 else f'{leg[0]}, {leg[1]}'
+                    american = f'+{round((price-1)*100)}' if price >= 2 else round(-100/(price-1))
                     out.append(f'* {title}: {price} ({bookmaker})')
         return out
                     
@@ -336,6 +337,7 @@ def get_advice(inp:str):
                 best['price'] = min(current)
     if not best:
         return [f'## No advice found. Try a different league or try again later.']
+    ev = 'low' if maxvar < 0.001 else 'medium' if maxvar < 0.004 else 'high'
     for event in all_odds_json:
         if best['event'] == (event['home_team'],event['away_team']):
             for bookmaker in event['bookmakers']:
@@ -343,7 +345,7 @@ def get_advice(inp:str):
                 for outcome in outcomes:
                     if keyfunc(outcome.get('name'),outcome.get('description'),outcome.get('point')) == best['outcome'] and 1/outcome['price'] == best['price']:
                         american = f'+{round((outcome["price"]-1)*100)}' if outcome['price'] >= 2 else round(-100/(outcome['price']-1))
-                        return [f'## Based on the current odds, my advice is to bet on {outcome["name"]} at {american} at {bookmaker["title"]}']
+                        return [f'## Based on the current odds, my best advice is to bet on {outcome["name"]} at {american} at {bookmaker["title"]}. This is a {ev} expected value bet.']
             
 
 
