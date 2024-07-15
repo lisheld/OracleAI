@@ -95,11 +95,59 @@ async def predict(interaction: discord.Interaction, args: str):
 async def advice(interaction: discord.Interaction, args: str):
     await interaction.response.send_message(call_command('advice', args), ephemeral=True)
 
-
 @bot.tree.command(name='info', description="Gets info about OracleAI.")
-async def leagues(interaction: discord.Interaction):
+async def info(interaction: discord.Interaction):
     await interaction.response.send_message("## OracleAI: A sports betting analyst\n### General Info:\nOracleAI does not have any specific syntax requirements, the information just needs to be in the message.\n**Command format: /<command> <arguments>**\n### Free commands:\n* /leagues: Gets a list of all available leagues\n* /events {league}: Gets a list of all events for a given league\n* /odds {league, teams, market}: gets the live odds for a specific market for a specific match\n* /markets {league}: gets the available markets for a specific league\n### Premium commands:\n* /best {league, teams, market}: gets the best odds for a specific market for a specific match\n* /scores {league, teams}: get the live scores for a given match from up to 3 days ago\n* /arb {league}: looks for available arbitrage opportunities in a given league\n* /predict {league, teams}: predicts the outcome of a given match\n* /advice {league, market}: suggests a bet for a given market in a given league\n### Error Handling:\nIf you are having trouble getting OracleAI to interpret your request, use standard english instead. For example, '/best spain france euros h2h' could be rewritten as '/best What are the best h2h odds for the spain vs france uefa euro game?'. If you continue to receive errors, please contact an administrator.", ephemeral=True)
 
+@bot.command(name='events')
+@is_premium()
+async def at_events(ctx, *args):
+    await ctx.send(call_command('events', args))
+
+@bot.command(name='odds')
+@is_premium()
+async def at_odds(ctx, *args):
+    await ctx.send(call_command('odds', args))
+    
+@bot.command(name='markets')
+@is_premium()
+async def at_markets(ctx, *args):
+    await ctx.send(call_command('markets', args))
+
+@bot.command(name='best')
+@is_premium()
+async def at_best(ctx, *args):
+    await ctx.send(call_command('best', args))
+
+@bot.command(name='scores')
+@is_premium()
+async def at_scores(ctx, *args):
+    await ctx.send(call_command('scores', args))
+
+@bot.command(name='arb')
+@is_premium()
+async def at_arb(ctx, *args):
+    await ctx.send(call_command('arb', args))
+
+@bot.command(name='leagues')
+@is_premium()
+async def at_leagues(ctx):
+    await ctx.send(call_command('leagues', []))
+
+@bot.command(name='predict')
+@is_premium()
+async def at_predict(ctx, *args):
+    await ctx.send(call_command('predict', args))
+
+@bot.command(name='advice')
+@is_premium()
+async def at_advice(ctx, *args):
+    await ctx.send(call_command('advice', args))
+
+@bot.command(name='info')
+@is_premium()
+async def at_info(ctx):
+    await ctx.send("## OracleAI: A sports betting analyst\n### General Info:\nOracleAI does not have any specific syntax requirements, the information just needs to be in the message.\n**Command format: /<command> <arguments>**\n### Free commands:\n* /leagues: Gets a list of all available leagues\n* /events {league}: Gets a list of all events for a given league\n* /odds {league, teams, market}: gets the live odds for a specific market for a specific match\n* /markets {league}: gets the available markets for a specific league\n### Premium commands:\n* /best {league, teams, market}: gets the best odds for a specific market for a specific match\n* /scores {league, teams}: get the live scores for a given match from up to 3 days ago\n* /arb {league}: looks for available arbitrage opportunities in a given league\n* /predict {league, teams}: predicts the outcome of a given match\n* /advice {league, market}: suggests a bet for a given market in a given league\n### Error Handling:\nIf you are having trouble getting OracleAI to interpret your request, use standard english instead. For example, '/best spain france euros h2h' could be rewritten as '/best What are the best h2h odds for the spain vs france uefa euro game?'. If you continue to receive errors, please contact an administrator.")
 
 if __name__ == '__main__':
     bot.run(discord_api_key)
