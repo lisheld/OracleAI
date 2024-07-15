@@ -4,17 +4,13 @@ from collections import defaultdict
 from datetime import datetime
 import numpy as np
 
-league_json = get_endpoint(f'{base_url}/sports', params = base_params)
-league_names = []
-league_keydict = {}
-league_groups = defaultdict(list)
-for item in league_json:
-    if not item['has_outrights']:
-        league_names.append(item['title'])
-        league_keydict[item['title']] = item['key']
-        league_groups[item['group']].append(item['title'])
 
 def get_leagues(_):
+    league_json = get_endpoint(f'{base_url}/sports', params = base_params)
+    league_groups = defaultdict(list)
+    for item in league_json:
+        if not item['has_outrights']:
+            league_groups[item['group']].append(item['title'])
     out = [f"## Available Leagues: "]
     for group in league_groups:
         out.append(f"### {group}")
@@ -22,6 +18,13 @@ def get_leagues(_):
     return out
 
 def get_events(inp:str):
+    league_json = get_endpoint(f'{base_url}/sports', params = base_params)
+    league_names = []
+    league_keydict = {}
+    for item in league_json:
+        if not item['has_outrights']:
+            league_names.append(item['title'])
+            league_keydict[item['title']] = item['key']
     league = classify_league(inp, league_names)
     league_key = league_keydict[league]
     events_json = get_endpoint(f"{base_url}/sports/{league_key}/events",base_params)
@@ -36,6 +39,13 @@ def get_events(inp:str):
     return [f'## Upcoming {league} matches: '] + [f"{event[0]}: {event[1]}" for event in event_list[:limit]]
 
 def get_odds(inp:str):
+    league_json = get_endpoint(f'{base_url}/sports', params = base_params)
+    league_names = []
+    league_keydict = {}
+    for item in league_json:
+        if not item['has_outrights']:
+            league_names.append(item['title'])
+            league_keydict[item['title']] = item['key']
     league = classify_league(inp, league_names)
     league_key = league_keydict[league]
     events_json = get_endpoint(f"{base_url}/sports/{league_key}/events",base_params)
@@ -82,6 +92,13 @@ def get_odds(inp:str):
     return out
 
 def get_prediciton(inp:str):
+    league_json = get_endpoint(f'{base_url}/sports', params = base_params)
+    league_names = []
+    league_keydict = {}
+    for item in league_json:
+        if not item['has_outrights']:
+            league_names.append(item['title'])
+            league_keydict[item['title']] = item['key']
     league = classify_league(inp, league_names)
     league_key = league_keydict[league]
     events_json = get_endpoint(f"{base_url}/sports/{league_key}/events",base_params)
@@ -160,6 +177,13 @@ def get_prediciton(inp:str):
     return [f"# Here is my prediciton for {teams}, {market}: "] + out
 
 def get_scores(inp:str):
+    league_json = get_endpoint(f'{base_url}/sports', params = base_params|{'all':'true'})
+    league_names = []
+    league_keydict = {}
+    for item in league_json:
+        if not item['has_outrights']:
+            league_names.append(item['title'])
+            league_keydict[item['title']] = item['key']
     league = classify_league(inp, league_names)
     league_key = league_keydict[league]
     scores_json = get_endpoint(f"{base_url}/sports/{league_key}/scores", base_params)
@@ -171,12 +195,26 @@ def get_scores(inp:str):
     return [score_dict[teams]]
 
 def get_markets(inp:str):
+    league_json = get_endpoint(f'{base_url}/sports', params = base_params)
+    league_names = []
+    league_keydict = {}
+    for item in league_json:
+        if not item['has_outrights']:
+            league_names.append(item['title'])
+            league_keydict[item['title']] = item['key']
     league = classify_league(inp, league_names)
     league_key = league_keydict[league]
     markets = ['h2h','spreads','totals'] + (player_props[league_key] if league_key in player_props else [])
     return [f'## Here are the available markets for {league}: ']+[f"* {market}" for market in markets]
 
 def get_best_odds(inp:str):
+    league_json = get_endpoint(f'{base_url}/sports', params = base_params)
+    league_names = []
+    league_keydict = {}
+    for item in league_json:
+        if not item['has_outrights']:
+            league_names.append(item['title'])
+            league_keydict[item['title']] = item['key']
     league = classify_league(inp, league_names)
     league_key = league_keydict[league]
     events_json = get_endpoint(f"{base_url}/sports/{league_key}/events",base_params)
@@ -229,6 +267,13 @@ def get_best_odds(inp:str):
         return helper('n')
 
 def get_arbitrages(inp:str):
+    league_json = get_endpoint(f'{base_url}/sports', params = base_params)
+    league_names = []
+    league_keydict = {}
+    for item in league_json:
+        if not item['has_outrights']:
+            league_names.append(item['title'])
+            league_keydict[item['title']] = item['key']
     league = classify_league(inp, league_names)
     league_key = league_keydict[league]
     all_odds_json = get_endpoint(f"{base_url}/sports/{league_key}/odds", base_params | {'regions':'us', "oddsFormat":"decimal", "markets":"h2h,spreads,totals"})
@@ -295,6 +340,13 @@ def get_arbitrages(inp:str):
         return [f'## No arbitrages found. Try a different league or try again later.']
 
 def get_advice(inp:str):
+    league_json = get_endpoint(f'{base_url}/sports', params = base_params)
+    league_names = []
+    league_keydict = {}
+    for item in league_json:
+        if not item['has_outrights']:
+            league_names.append(item['title'])
+            league_keydict[item['title']] = item['key']
     league = classify_league(inp, league_names)
     league_key = league_keydict[league]
     markets = ['h2h','spreads','totals'] + (player_props[league_key] if league_key in player_props else [])

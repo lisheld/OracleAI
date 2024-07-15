@@ -1,3 +1,3 @@
-import numpy as np
-data = [1,2,3,4,5]
-print(np.median(data))
+from vars import base_params,base_url
+from newhelpers import get_endpoint
+print(get_endpoint(f'{base_url}/sports', params = base_params|{'all':'true'}))
