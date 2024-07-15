@@ -1,3 +1,3 @@
-from newfuncs import get_prediciton
-
-print(get_prediciton("spain vs england uefa euros 2024 spreads"))
+import numpy as np
+data = [1,2,3,4,5]
+print(np.median(data))

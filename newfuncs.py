@@ -2,6 +2,7 @@ from newhelpers import classify_teams,classify_league,classify_market,get_endpoi
 from vars import base_url, base_params, player_props
 from collections import defaultdict
 from datetime import datetime
+import numpy as np
 
 league_json = get_endpoint(f'{base_url}/sports', params = base_params)
 league_names = []
@@ -45,6 +46,8 @@ def get_odds(inp:str):
     id = event_dict[teams]
     odds_json = get_endpoint(f"{base_url}/sports/{league_key}/events/{id}/odds", base_params | {'regions':'us','markets':market, "oddsFormat":"american"})
     out = [f"## The odds for {market} on {teams} are: "]
+    if not odds_json['bookmakers']:
+        raise Exception("Sorry, no bets exist for that market on this sport. Please request a different market.")
     for bookmaker in odds_json['bookmakers']:
         out.append(f"### {bookmaker['title']}:")
         outcomes = bookmaker['markets'][0]['outcomes']
@@ -84,36 +87,77 @@ def get_prediciton(inp:str):
     events_json = get_endpoint(f"{base_url}/sports/{league_key}/events",base_params)
     event_dict = {f"{event['home_team']} vs {event['away_team']}":event['id'] for event in events_json}
     teams = classify_teams(inp, list(event_dict.keys()))
+    home_team,away_team = teams.split(' vs ')
     markets = ['h2h','spreads','totals'] + (player_props[league_key] if league_key in player_props else [])
     market = classify_market(inp, markets)
     id = event_dict[teams]
     odds_json = get_endpoint(f"{base_url}/sports/{league_key}/events/{id}/odds", base_params | {'regions':'us','markets':market, "oddsFormat":"decimal"})
+    if not odds_json['bookmakers']:
+        raise Exception("Sorry, no bets exist for that market on this sport. Please request a different market.")
     outcome_dict = defaultdict(lambda: (0,0))
+    playerProp = None
+    if market == 'h2h':
+        keyfunc = lambda n,d,p:n
+    elif market == 'spreads':
+        keyfunc = lambda n,d,p:(n,p)
+    elif market == 'totals':
+        keyfunc = lambda n,d,p:f'{n} {p}'
+    else:
+        probe = odds_json[0]['bookmakers'][0]['markets'][0]['outcomes'][0]
+        if 'point' in probe:
+            #over/under player prop
+            keyfunc = lambda n,d,p:(d,n,p) 
+            playerProp = 1
+        else:
+            #non-over/under player prop
+            keyfunc = lambda n,d,p:(d,n)
+            playerProp = 0
+    
     for bookmaker in odds_json['bookmakers']:
         outcomes = bookmaker['markets'][0]['outcomes']
-        initial_outcome = outcomes[0]
-        if 'description' in initial_outcome:
-            if 'point' in initial_outcome:
-                for outcome in outcomes:
-                    key = (outcome['description'], outcome['name'], outcome['point'])
-                    outcome_dict[key] = add_tuples(outcome_dict[key],(100/outcome['price'],1))
-            else:
-                for outcome in outcomes:
-                    key = (outcome['description'], outcome['name'])
-                    outcome_dict[key] = add_tuples(outcome_dict[key],(100/outcome['price'],1))
-        elif 'point' in initial_outcome:
-            for outcome in outcomes:
-                key = (outcome['name'], outcome['point'])
-                outcome_dict[key] = add_tuples(outcome_dict[key],(100/outcome['price'],1))
-        else:
-            for outcome in outcomes:
-                key = outcome['name']
-                outcome_dict[key] = add_tuples(outcome_dict[key],(100/outcome['price'],1))
+        for outcome in outcomes:
+            key = keyfunc(outcome.get('name'),outcome.get('description'),outcome.get('point'))
+            outcome_dict[key] = add_tuples(outcome_dict[key],(100/outcome['price'],1))
+
     average_dict = {bet:round(total[0]/total[1]) for bet, total in outcome_dict.items()}
-    if market == 'h2h':     
+    if market in {'h2h','totals'}:     
         scale = 100/sum(average_dict.values())
-        average_dict = {bet:round(prob*scale,2) for bet,prob in average_dict.items()}
-    return [f"# Here is my prediciton for {teams}: "] + [f'{bet}: {prob}' for bet,prob in average_dict.items()]
+        out = [f'* {bet}: {round(prob*scale,2)}%' for bet,prob in average_dict.items()]
+    elif market == 'spreads':
+        new_dict = {}
+        out = []
+        for bet,prob in average_dict.items():
+            team,point = bet
+            other_team = home_team if team == away_team else away_team
+            if (other_team,-point) in new_dict:
+                scale = 100/(prob+new_dict[(other_team,-point)])
+                out.append(f'* {team} {point}: {round(prob*scale,2)}%')
+                out.append(f'* {other_team} {-point}: {round(new_dict[(other_team,-point)]*scale,2)}%')
+            else:
+                new_dict[bet] = prob
+    elif playerProp == 1:
+        new_dict = {}
+        out = []
+        for bet,prob in average_dict.items():
+            player,pos,point = bet
+            other_pos = 'Over' if pos == 'Under' else 'Under'
+            if (player,other_pos,point) in new_dict:
+                scale = 100/(prob+new_dict[(player,other_pos,point)])
+                out.append(f'* {pos} {point} - {player}: {round(prob*scale,2)}%')
+                out.append(f'* {other_pos} {point} - {player}: {round(new_dict[(player,other_pos,point)]*scale,2)}%')
+            else:
+                new_dict[bet] = prob
+    else:
+        new_dict = defaultdict(dict)
+        for bet,prob in average_dict.items():
+            player,pos = bet
+            new_dict[player][pos] = prob
+        newnew_dict = dict()
+        for player in new_dict:
+            scale = 100/sum(new_dict[player].values())
+            for pos in new_dict[player]:
+                out.append(f'({player} - {pos}: {round(new_dict[player][pos]*scale,2)}%')
+    return [f"# Here is my prediciton for {teams}, {market}: "] + out
 
 def get_scores(inp:str):
     league = classify_league(inp, league_names)
@@ -142,6 +186,8 @@ def get_best_odds(inp:str):
     market = classify_market(inp, markets)
     id = event_dict[teams]
     odds_json = get_endpoint(f"{base_url}/sports/{league_key}/events/{id}/odds", base_params | {'regions':'us','markets':market, "oddsFormat":"american"})
+    if not odds_json['bookmakers']:
+        raise Exception("Sorry, no bets exist for that market on this sport. Please request a different market.")
     current_best = {}
     probe = odds_json['bookmakers'][0]['markets'][0]['outcomes'][0]
     
@@ -186,7 +232,6 @@ def get_arbitrages(inp:str):
     league = classify_league(inp, league_names)
     league_key = league_keydict[league]
     all_odds_json = get_endpoint(f"{base_url}/sports/{league_key}/odds", base_params | {'regions':'us', "oddsFormat":"decimal", "markets":"h2h,spreads,totals"})
-    
     arbitrages = defaultdict(list)
     for event in all_odds_json:
         home_team,away_team = event['home_team'],event['away_team']
@@ -248,99 +293,57 @@ def get_arbitrages(inp:str):
     else:
         return [f'## No arbitrages found. Try a different league or try again later.']
 
-# def get_advice(inp:str):
-#     league = classify_league(inp, league_names)
-#     league_key = league_keydict[league]
-#     markets = ['h2h','spreads','totals'] + (player_props[league_key] if league_key in player_props else [])
-#     market = classify_market(inp, markets)
-#     all_odds_json = get_endpoint(f"{base_url}/sports/{league_key}/odds", base_params | {'regions':'us', "oddsFormat":"decimal", "markets":market})
-#     data = defaultdict(list)
-#     for event in all_odds_json:
-#         home_team,away_team = event['home_team'],event['away_team']
-#         current_best = defaultdict(lambda: defaultdict(list))
-#         for bookmaker in event['bookmakers']:
-#             outcomes = bookmaker['markets'][0]['outcomes']
-#             probe = outcomes[0]
-#             if market == 'h2h':
-#                 ...
-#             elif market == 'spreads':
-#                 ...
-#             elif market == 'totals':
-#                 ...
-#             else:
-#                 # playerprop
-#                 if 'point' in probe:
-#                     keyfunc = lambda n,d,p:f'{d} - {n} {p}'
-#                 else:
-#                     keyfunc = lambda n,d:f'{d} - {n}'
-                
-#             elif 'point' in probe:
-#                 if probe['name'] in {home_team,away_team}:
-#                     #spreads bet
-#                 else:
-#                     #totals bet
-#             else:
-#                 ...
+def get_advice(inp:str):
+    league = classify_league(inp, league_names)
+    league_key = league_keydict[league]
+    markets = ['h2h','spreads','totals'] + (player_props[league_key] if league_key in player_props else [])
+    market = classify_market(inp, markets)
+    all_odds_json = get_endpoint(f"{base_url}/sports/{league_key}/odds", base_params | {'regions':'us', "oddsFormat":"decimal", "markets":market})
+    data = defaultdict(lambda: defaultdict(list))
+    if market == 'h2h':
+        keyfunc = lambda n,d,p:n
+    elif market == 'spreads':
+        keyfunc = lambda n,d,p:f'{n} {p}'
+    elif market == 'totals':
+        keyfunc = lambda n,d,p:f'{n} {p}'
+    else:
+        probe = all_odds_json[0]['bookmakers'][0]['markets'][0]['outcomes'][0]
+        if 'point' in probe:
+            #over/under player prop
+            keyfunc = lambda n,d,p:f'{d} - {n} {p}'   
+        else:
+            #non-over/under player prop
+            keyfunc = lambda n,d,p:f'{d} - {n}'
+    for event in all_odds_json:
+        home_team,away_team = event['home_team'],event['away_team']
+        for bookmaker in event['bookmakers']:
+            outcomes = bookmaker['markets'][0]['outcomes']
+            for outcome in outcomes:
+                key = keyfunc(outcome.get('name'),outcome.get('description'),outcome.get('point'))
+                data[(home_team,away_team)][key].append(1/outcome['price'])
+    if not data:
+        raise Exception("Sorry, no bets exist for that market on this sport. Please request a different market or sport.")
+    maxvar = 0
+    best = {}
+    for event, outcomes in data.items():
+        for outcome in outcomes:
+            current = data[event][outcome]
+            var = np.var(current)
+            if var > maxvar:
+                maxvar = var
+                best['event'] = event
+                best['outcome'] = outcome
+                best['price'] = min(current)
+    if not best:
+        return [f'## No advice found. Try a different league or try again later.']
+    for event in all_odds_json:
+        if best['event'] == (event['home_team'],event['away_team']):
+            for bookmaker in event['bookmakers']:
+                outcomes = bookmaker['markets'][0]['outcomes']
+                for outcome in outcomes:
+                    if keyfunc(outcome.get('name'),outcome.get('description'),outcome.get('point')) == best['outcome'] and 1/outcome['price'] == best['price']:
+                        return [f'## Based on the current odds, my advice is to bet on {outcome["name"]} at {outcome["price"]} at {bookmaker["title"]}']
             
-
-
-
-#         for bookmaker in event['bookmakers']:
-#             for market in bookmaker['markets']:
-#                 name = market['key']
-#                 probe = market['outcomes'][0]
-#                 if 'point' in probe:
-#                     titlefunc = lambda x: (x['name'],x['point'])
-#                 else:
-#                     titlefunc = lambda x: (x['name'],)
-#                 for outcome in market['outcomes']:
-#                     title = titlefunc(outcome)
-#                     if current_best[name].get(title) is None:
-#                         current_best[name][title] = (outcome['price'],bookmaker['title'])
-#                     elif outcome['price'] > current_best[name][title][0]:
-#                         current_best[title] = (outcome['price'],bookmaker['title'])
-#         for market,best in current_best.items():
-#             if market == 'h2h':
-#                 if sum([1/price for price,_ in best.values()]) < 1:
-#                     arbitrages[(home_team,away_team)].append(best)  
-#             elif market == 'spreads':
-#                 counter = 1
-#                 keydict = {}
-#                 sumdict = defaultdict(int)
-#                 for (team,point),(price,_) in best.items():
-#                     if (team,point) not in keydict:
-#                         keydict[(team,point)] = counter
-#                         other_team = home_team if team == away_team else away_team
-#                         keydict[(other_team,-point)] = counter
-#                         counter += 1
-#                     key = keydict[(team,point)]
-#                     sumdict[key] += 1/price
-#                 for k,v in sumdict.items():
-#                     if v < 1:
-#                         bets = {}
-#                         for bet, key in keydict.items():
-#                             if key == k:
-#                                 bets[bet] = best[bet]
-#                         arbitrages[(home_team,away_team)].append(bets)
-#             elif market == 'totals':
-#                 sumdict = defaultdict(int)
-#                 for (_,point),(price,__) in best.items():
-#                     sumdict[point] += 1/price
-#                 for bet,prob in sumdict.items():
-#                     if prob < 1:
-#                         arbitrages[(home_team,away_team)].append({k:v for k,v in best.items() if k[1] == bet})
-#     if arbitrages:
-#         out = [f'## Arbitrages found!']
-#         for (home,away),bets in arbitrages.items():
-#             out.append(f'{home} vs {away}')
-#             for bet in bets:
-#                 for leg,(price,bookmaker) in bet.items():
-#                     title = leg[0] if len(leg) == 1 else f'{leg[0]}, {leg[1]}'
-#                     out.append(f'* {title}: {price} ({bookmaker})')
-#         return out
-                    
-#     else:
-#         return [f'## No arbitrages found. Try a different league or try again later.']
 
 
 func_dict = {
@@ -351,5 +354,6 @@ func_dict = {
     'scores': get_scores,
     'arb': get_arbitrages,
     'leagues': get_leagues,
-    'predict': get_prediciton
+    'predict': get_prediciton,
+    'advice': get_advice
 }
