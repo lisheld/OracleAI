@@ -1,7 +1,4 @@
 .env
-test.py
-test_cases.py
 legacy/
-testcommand.py
 oracleai.code-workspace
 __pycache__
