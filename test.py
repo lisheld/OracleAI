@@ -1,2 +1,2 @@
-from newfuncs import get_arbitrages
-print(get_arbitrages(' '))
+from newfuncs import get_prediciton
+print(get_prediciton("Atlanta United FC vs Columbus Crew SC, MLS, totals"))

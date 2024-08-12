@@ -3,9 +3,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+catch_errors = True
+
 odds_api_key = os.getenv('odds')
 openai_api_key = os.getenv('openai')
 discord_api_key = os.getenv('discord')
+telegram_api_key = os.getenv('telegram')
 GPT_MODEL = "gpt-3.5-turbo"
 
 base_url = 'https://api.the-odds-api.com/v4'
