@@ -1,7 +1,7 @@
 # OracleAI: A sports trading analyst
 Made for @0racleBets. Uses OpenAI to parse input and determine desired information, and OddsAPI to fetch live odds.
 ## General Info:
-OracleGPT does not have any specific syntax requirements, the information just needs to be in the message.
+OracleAI does not have any specific syntax requirements, the information just needs to be in the message.
 
 **Command format: /{command} {arguments}**
 ## Commands:
